@@ -1,5 +1,22 @@
 package de.seuhd.campuscoffee.domain.implementation;
 
+import java.util.List;
+import java.util.Objects;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.Mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import de.seuhd.campuscoffee.domain.configuration.ApprovalConfiguration;
 import de.seuhd.campuscoffee.domain.exceptions.NotFoundException;
 import de.seuhd.campuscoffee.domain.exceptions.ValidationException;
@@ -10,22 +27,7 @@ import de.seuhd.campuscoffee.domain.ports.data.PosDataService;
 import de.seuhd.campuscoffee.domain.ports.data.ReviewDataService;
 import de.seuhd.campuscoffee.domain.ports.data.UserDataService;
 import de.seuhd.campuscoffee.domain.tests.TestFixtures;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-import java.util.Objects;
-
 import static de.seuhd.campuscoffee.domain.tests.TestFixtures.getApprovalConfiguration;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.*;
 
 /**
  * Unit and integration tests for the operations related to reviews.
@@ -172,5 +174,26 @@ public class ReviewServiceTest {
         
         // then
         assertTrue(updatedReview.approved());
+    }
+
+    @Test
+    void approvedIsNotUpdatedWhenReviewDoesNotMeetRequiredApprovalCount() {
+        // given
+        Review review = TestFixtures.getReviewFixtures().getFirst().toBuilder()
+                .approvalCount(0)
+                .approved(false)
+                .build();
+        User user = TestFixtures.getUserFixtures().getLast();
+        assertNotNull(user.getId());
+        when(userDataService.getById(user.getId())).thenReturn(user);
+        assertNotNull(review.getId());
+        when(reviewDataService.getById(review.getId())).thenReturn(review);
+        when(reviewDataService.upsert(any(Review.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        
+        // when
+        Review unapprovedReview = reviewService.approve(review, user.getId());
+
+        // then
+        assertFalse(unapprovedReview.approved());
     }
 }
